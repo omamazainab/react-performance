@@ -19,11 +19,6 @@ const initialGrid = Array.from({length: 100}, () =>
 
 function appReducer(state, action) {
   switch (action.type) {
-    // we're no longer managing the dogName state in our reducer
-    // 💣 remove this case
-    case 'TYPED_IN_DOG_INPUT': {
-      return {...state, dogName: action.dogName}
-    }
     case 'UPDATE_GRID_CELL': {
       return {...state, grid: updateGridCellState(state.grid, action)}
     }
@@ -36,12 +31,8 @@ function appReducer(state, action) {
   }
 }
 
-function AppProvider({children}) {
-  const [state, dispatch] = React.useReducer(appReducer, {
-    // 💣 remove the dogName state because we're no longer managing that
-    dogName: '',
-    grid: initialGrid,
-  })
+function AppProvider({children, reducer, initialState}) {
+  const [state, dispatch] = React.useReducer(reducer, initialState)
   return (
     <AppStateContext.Provider value={state}>
       <AppDispatchContext.Provider value={dispatch}>
@@ -69,8 +60,8 @@ function useAppDispatch() {
 
 function Grid() {
   const dispatch = useAppDispatch()
-  const [rows, setRows] = useDebouncedState(50)
-  const [columns, setColumns] = useDebouncedState(50)
+  const [rows, setRows] = useDebouncedState(5)
+  const [columns, setColumns] = useDebouncedState(5)
   const updateGridData = () => dispatch({type: 'UPDATE_GRID'})
   return (
     <AppGrid
@@ -85,9 +76,19 @@ function Grid() {
 }
 Grid = React.memo(Grid)
 
-function Cell({row, column}) {
-  const state = useAppState()
-  const cell = state.grid[row][column]
+function withStateSlice(Component,slice){
+  const MemoComp = React.memo(Component)
+  function Wrapper(props){
+    const state = useAppState();
+    return <MemoComp state={slice(state,props)} {...props} />
+  }
+  Wrapper = React.memo(Wrapper)
+  return Wrapper;
+}
+
+
+
+function Cell({row, column,state : cell}) {
   const dispatch = useAppDispatch()
   const handleClick = () => dispatch({type: 'UPDATE_GRID_CELL', row, column})
   return (
@@ -103,19 +104,28 @@ function Cell({row, column}) {
     </button>
   )
 }
-Cell = React.memo(Cell)
+
+Cell = withStateSlice(Cell,(state,{row,column})=> state.grid[row][column] )
+
+function dogReducer(state, action) {
+  switch (action.type) {
+    case 'UPDATE_DOG_NAME': {
+      return {...state, dogName: action.dogName}
+    }
+    default: {
+      throw new Error(`Unhandled action type: ${action.type}`)
+    }
+  }
+}
 
 function DogNameInput() {
-  // 🐨 replace the useAppState and useAppDispatch with a normal useState here
-  // to manage the dogName locally within this component
-  const state = useAppState()
-  const dispatch = useAppDispatch()
-  const {dogName} = state
+
+  const {dogName} = useAppState();
+  const dispatch = useAppDispatch();
 
   function handleChange(event) {
     const newDogName = event.target.value
-    // 🐨 change this to call your state setter that you get from useState
-    dispatch({type: 'TYPED_IN_DOG_INPUT', dogName: newDogName})
+    dispatch({type: "UPDATE_DOG_NAME",dogName : newDogName})
   }
 
   return (
@@ -135,17 +145,21 @@ function DogNameInput() {
     </form>
   )
 }
+
 function App() {
   const forceRerender = useForceRerender()
   return (
     <div className="grid-app">
       <button onClick={forceRerender}>force rerender</button>
-      <AppProvider>
-        <div>
+
+      <div>
+        <AppProvider reducer={dogReducer} initialState={{dogName: ''}}>
           <DogNameInput />
+        </AppProvider>
+        <AppProvider reducer={appReducer} initialState={{grid: initialGrid}}>
           <Grid />
-        </div>
-      </AppProvider>
+        </AppProvider>
+      </div>
     </div>
   )
 }

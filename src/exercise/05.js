@@ -18,9 +18,6 @@ const initialGrid = Array.from({length: 100}, () =>
 
 function appReducer(state, action) {
   switch (action.type) {
-    case 'TYPED_IN_DOG_INPUT': {
-      return {...state, dogName: action.dogName}
-    }
     case 'UPDATE_GRID_CELL': {
       return {...state, grid: updateGridCellState(state.grid, action)}
     }
@@ -33,13 +30,19 @@ function appReducer(state, action) {
   }
 }
 
-function AppProvider({children}) {
-  const [state, dispatch] = React.useReducer(appReducer, {
-    dogName: '',
-    grid: initialGrid,
-  })
-  // 🐨 memoize this value with React.useMemo
-  const value = [state, dispatch]
+function DogNameProvider({children}) {
+  const [state, setState] = React.useState('')
+  const value = React.useMemo(() => [state, setState], [state])
+  return (
+    <AppStateContext.Provider value={value}>
+      {children}
+    </AppStateContext.Provider>
+  )
+}
+
+function GridProvider({children}) {
+  const [state, dispatch] = React.useReducer(appReducer,{grid : initialGrid})
+  const value = React.useMemo(() => [state, dispatch], [state])
   return (
     <AppStateContext.Provider value={value}>
       {children}
@@ -93,26 +96,26 @@ function Cell({row, column}) {
 Cell = React.memo(Cell)
 
 function DogNameInput() {
-  const [state, dispatch] = useAppState()
-  const {dogName} = state
+  const [state, setState] = useAppState()
+  // const {dogName} = state
 
   function handleChange(event) {
     const newDogName = event.target.value
-    dispatch({type: 'TYPED_IN_DOG_INPUT', dogName: newDogName})
+    setState(newDogName);
   }
 
   return (
     <form onSubmit={e => e.preventDefault()}>
       <label htmlFor="dogName">Dog Name</label>
       <input
-        value={dogName}
+        value={state}
         onChange={handleChange}
         id="dogName"
         placeholder="Toto"
       />
-      {dogName ? (
+      {state ? (
         <div>
-          <strong>{dogName}</strong>, I've a feeling we're not in Kansas anymore
+          <strong>{state}</strong>, I've a feeling we're not in Kansas anymore
         </div>
       ) : null}
     </form>
@@ -124,12 +127,14 @@ function App() {
   return (
     <div className="grid-app">
       <button onClick={forceRerender}>force rerender</button>
-      <AppProvider>
-        <div>
+      <div>
+        <DogNameProvider>
           <DogNameInput />
+        </DogNameProvider>
+        <GridProvider>
           <Grid />
-        </div>
-      </AppProvider>
+        </GridProvider>
+      </div>
     </div>
   )
 }

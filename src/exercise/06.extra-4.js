@@ -10,8 +10,7 @@ import {
   updateGridState,
   updateGridCellState,
 } from '../utils'
-// 🐨 you're gonna need these:
-// import {RecoilRoot, useRecoilState, useRecoilCallback, atomFamily} from 'recoil'
+import {RecoilRoot, useRecoilState, useRecoilCallback, atomFamily} from 'recoil'
 
 const AppStateContext = React.createContext()
 
@@ -19,10 +18,9 @@ const initialGrid = Array.from({length: 100}, () =>
   Array.from({length: 100}, () => Math.random() * 100),
 )
 
-// 🐨 create an atomFamily called `cellAtoms` here where the
-// default callback function accepts an object with the
-// `row` and `column` and returns the value from the initialGrid
-// 💰 initialGrid[row][column]
+const cellAtoms = atomFamily({
+  default: ({row,column})=>initialGrid[row][column]
+})
 
 // 💰 I'm going to give this hook to you as it's mostly here for our contrived
 // example purposes. Just comment this in when you're ready to use it.
